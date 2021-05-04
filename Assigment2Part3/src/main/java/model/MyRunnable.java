@@ -17,11 +17,9 @@ public class MyRunnable implements Runnable{
     private final List<String> unwantedWords;
     private final int numberOfThreads;
     private PDFTextStripper stripper;
-    private CompletableFuture<Boolean> future;
     private final Task task;
 
-    public MyRunnable(CompletableFuture<Boolean> future, int myPosition, Manager manager, RankMonitor rankMonitor, List<String> unwantedWords, int numberOfThreads, Task task){
-        this.future = future;
+    public MyRunnable(int myPosition, Manager manager, RankMonitor rankMonitor, List<String> unwantedWords, int numberOfThreads, Task task){
         this.manager = manager;
         this.myPosition = myPosition;
         this.rankMonitor = rankMonitor;
@@ -47,7 +45,6 @@ public class MyRunnable implements Runnable{
             }
             task.incThreadWhoAlreadyWorked();
         }
-        future.complete(true);
         //System.out.println("Thread "+getName()+" completed his job... exiting");
     }
 

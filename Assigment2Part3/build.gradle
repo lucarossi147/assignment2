@@ -15,6 +15,9 @@ dependencies {
 
     // https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox-app
     implementation("org.apache.pdfbox:pdfbox-app:2.0.22")
+
+    /* module 2.3 - reactive programming - RxJava */
+    implementation "io.reactivex.rxjava3:rxjava:3.0.12"
 }
 
 test {

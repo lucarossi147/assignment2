@@ -1,5 +1,8 @@
 package controller;
 
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import model.*;
 import view.View;
 
@@ -30,10 +33,6 @@ public class Controller {
     public void processEvent(String event, String path){
         final String pathFinal = cleanPath(path);
         final int nThreads = Runtime.getRuntime().availableProcessors();
-        //        final int nThread = Runtime.getRuntime().availableProcessors()/2;
-        //        final int nThread = 1;
-        ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
-
 
         switch(event){
             case "start":
@@ -44,38 +43,20 @@ public class Controller {
                     new Thread(() -> {
                         manager.clear();
                         monitor.reset();
+
                         createTasks(pathFinal, nThreads);
 
                         //read ignore.txt
                         List<String> unwantedWords = getFromIgnoreText(view.getIgnorePath());
-                        Set<CompletableFuture<Boolean>> futures = new HashSet<>();
 
-                        for (Task t : manager.getTasks()){
-                            for (int i = 0; i < nThreads; i++) {
-                              /*  CompletableFuture<Boolean> future = CompletableFuture
-                                        .supplyAsync()
-                                        .thenCompose(res -> CompletableFuture
-                                                .runAsync(new AnalyzeRunnable(res.orElse(null), monitor, ignoreWords, manager)))
-                                        .thenAccept(res -> System.out.println("finished?"));*/
-                                CompletableFuture<Boolean> future = new CompletableFuture<>();
-                                futures.add(future);
-                                executorService.submit(new MyRunnable(future,i, manager, monitor, unwantedWords, nThreads, t));
-                            }
-                        }
-                        System.out.println(futures.size());
-                        executorService.shutdown();
+                        Flowable.fromIterable(manager.getTasks()).forEach(task -> {
+                            Flowable.just(task)
+                                    .subscribe(t -> {
+                                        for (int i = 0; i < nThreads; i++) {
+                                            new MyRunnable(i, manager, monitor, unwantedWords, nThreads, t).run();
+                                        }
+                                    });
 
-                        futures.forEach(f -> {
-                            if (!f.isDone()){
-                                try {
-                                    f.get();
-                                    //System.out.println("done");
-                                } catch (InterruptedException | ExecutionException e) {
-                                    e.printStackTrace();
-                                }
-                            }/*else{
-                                System.out.println("already done");
-                            }*/
                         });
 
                         view.setStartButtonStatus(true);
@@ -88,7 +69,6 @@ public class Controller {
 
             case "stop":
                 manager.stop();
-                executorService.shutdownNow();
                 view.setStartButtonStatus(true);
                 break;
             default:

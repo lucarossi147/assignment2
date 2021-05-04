@@ -19,7 +19,7 @@ public class RankMonitorImpl implements RankMonitor {
 
     public RankMonitorImpl(){
         mutex = new ReentrantLock();
-        rank = new HashMap<>();
+        rank = new LinkedHashMap<>();
         stop = false;
         totalWords = 0;
     }
