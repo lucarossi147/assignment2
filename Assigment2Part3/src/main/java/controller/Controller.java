@@ -4,6 +4,8 @@ import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import model.*;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import view.View;
 
 import java.io.File;
@@ -12,16 +14,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 public class Controller {
     private final View view;
     private final RankMonitor monitor;
     private final Manager manager;
+    private int nThreads = 0;
+    private List<String> unwantedWords = new ArrayList<>();
 
     public Controller(){
         this.manager = new Manager();
@@ -32,7 +33,7 @@ public class Controller {
 
     public void processEvent(String event, String path){
         final String pathFinal = cleanPath(path);
-        final int nThreads = Runtime.getRuntime().availableProcessors();
+        nThreads = Runtime.getRuntime().availableProcessors();
 
         switch(event){
             case "start":
@@ -49,7 +50,7 @@ public class Controller {
                         //read ignore.txt
                         List<String> unwantedWords = getFromIgnoreText(view.getIgnorePath());
 
-                        Flowable.fromIterable(manager.getTasks()).forEach(task -> {
+                        /*Flowable.fromIterable(manager.getTasks()).forEach(task -> {
                             Flowable.just(task)
                                     .subscribe(t -> {
                                         for (int i = 0; i < nThreads; i++) {
@@ -57,7 +58,15 @@ public class Controller {
                                         }
                                     });
 
-                        });
+                        });*/
+
+                        Flowable.fromIterable(manager.getTasks()).forEach(task -> {
+                                    Flowable.just(task)
+                                            .subscribeOn(Schedulers.io())
+                                            .map(this::read) //Task -> Optional<Page
+                                            .map(this::analyze)
+                                            .subscribe();
+                                });
 
                         view.setStartButtonStatus(true);
                         System.out.println("Time elapsed "+ (System.currentTimeMillis() - start));
@@ -113,4 +122,47 @@ public class Controller {
         }
         return words;
     }
+
+    private Optional<Page> read(Task task){
+        try{
+            PDDocument document = PDDocument.load(new File(task.getPath()));
+            return extractPage(document, 1, document.getNumberOfPages());
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Page> extractPage(PDDocument document, int from, int to) throws IOException {
+        if (document.getCurrentAccessPermission().canExtractContent()){
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setStartPage(from);
+            stripper.setEndPage(to);
+            Page p = new Page(stripper.getText(document).trim());
+            return Optional.of(p);
+        }else{
+            System.out.println("Couldn't extract content of file");
+            return Optional.empty();
+        }
+    }
+
+    private HashMap<String, Integer> analyze(Optional<Page> page){
+        HashMap<String, Integer>pageRank = new HashMap<>();
+        if (page.isPresent()){
+            List<String> words =  page.get().getRelevantWords(this.unwantedWords);
+            for (String word : words){
+                update(pageRank, word);
+            }
+        }
+        return pageRank;
+    }
+
+    private void update(HashMap<String, Integer> pageRank, String word){
+        if(pageRank.containsKey(word)){
+            pageRank.put(word, (pageRank.get(word))+1);
+        } else {
+            pageRank.put(word,1);
+        }
+    }
+
 }
