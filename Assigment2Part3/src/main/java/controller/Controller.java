@@ -24,6 +24,10 @@ public class Controller {
     private int nThreads = 0;
     private List<String> unwantedWords = new ArrayList<>();
 
+
+    private LinkedHashMap<String, Integer> globalRank = new LinkedHashMap<>();
+    private int totalWords = 0;
+
     public Controller(){
         this.manager = new Manager();
         this.monitor = new RankMonitorImpl();
@@ -37,6 +41,7 @@ public class Controller {
 
         switch(event){
             case "start":
+                log("main thread");
                 long start = System.currentTimeMillis();
                 view.setStartButtonStatus(false);
                 view.reset();
@@ -48,7 +53,7 @@ public class Controller {
                         createTasks(pathFinal, nThreads);
 
                         //read ignore.txt
-                        List<String> unwantedWords = getFromIgnoreText(view.getIgnorePath());
+                        this.unwantedWords = getFromIgnoreText(view.getIgnorePath());
 
                         /*Flowable.fromIterable(manager.getTasks()).forEach(task -> {
                             Flowable.just(task)
@@ -64,7 +69,9 @@ public class Controller {
                                     Flowable.just(task)
                                             .subscribeOn(Schedulers.io())
                                             .map(this::read) //Task -> Optional<Page
+                                            .subscribeOn(Schedulers.computation())
                                             .map(this::analyze)
+                                            .map(this::addAll)
                                             .subscribe();
                                 });
 
@@ -124,6 +131,7 @@ public class Controller {
     }
 
     private Optional<Page> read(Task task){
+        log("reading the docunent");
         try{
             PDDocument document = PDDocument.load(new File(task.getPath()));
             return extractPage(document, 1, document.getNumberOfPages());
@@ -147,6 +155,7 @@ public class Controller {
     }
 
     private HashMap<String, Integer> analyze(Optional<Page> page){
+        log("analyzing the page");
         HashMap<String, Integer>pageRank = new HashMap<>();
         if (page.isPresent()){
             List<String> words =  page.get().getRelevantWords(this.unwantedWords);
@@ -163,6 +172,43 @@ public class Controller {
         } else {
             pageRank.put(word,1);
         }
+    }
+
+    private Map<String, Integer> addAll(Map<String, Integer> map){
+        for (String s: map.keySet()) {
+            int instancesOfThisWord = map.get(s);
+            if(globalRank.containsKey(s)){
+                globalRank.put(s,globalRank.get(s) + instancesOfThisWord);
+            } else {
+                globalRank.put(s, instancesOfThisWord);
+            }
+            totalWords += instancesOfThisWord;
+        }
+        return sortRank(globalRank);
+    }
+
+    private Map<String, Integer> sortRank(Map<String, Integer> map){
+        Map<String, Integer> sortedMap = new LinkedHashMap<>();
+        map.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .forEachOrdered(x -> sortedMap.put(x.getKey(), x.getValue()));
+
+        sortedMap.put("TOTAL_WORDS", totalWords);
+        int i =0;
+        for (String s : sortedMap.keySet()){
+            if(i<10){
+                System.out.println("parola: "+ s.toUpperCase() + " comparsa: " + sortedMap.get(s)+ " volte");
+                i++;
+            } else {
+                break;
+            }
+        }
+        return sortedMap;
+    }
+
+    static private void log(String msg) {
+        System.out.println("[ " + Thread.currentThread().getName() + "  ] " + msg);
     }
 
 }
