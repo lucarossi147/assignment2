@@ -1,15 +1,12 @@
 package view;
 
 import controller.Controller;
-import model.RankMonitor;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 public class View extends JFrame implements ActionListener {
 
@@ -17,7 +14,6 @@ public class View extends JFrame implements ActionListener {
     private static final int GLOBAL_WIDTH = 350;
     private static final int GLOBAL_HEIGHT = 500;
     private static final String newline = "\n";
-    private final RankMonitor monitor;
     private JTextArea textArea;
     private JTextField directoryText;
     private JTextField wordsCounterText;
@@ -25,12 +21,11 @@ public class View extends JFrame implements ActionListener {
     private JTextField wordsToBePrinted;
     private JButton start;
 
-    public View(Controller controller, RankMonitor monitor){
+    public View(Controller controller){
         JFrame frame = new JFrame("WordsCounter");
         prepareFrame(frame);
         frame.setResizable(false);
         this.controller = controller;
-        this.monitor = monitor;
     }
 
     public void prepareFrame(JFrame frame) {
@@ -120,34 +115,22 @@ public class View extends JFrame implements ActionListener {
         this.start.setEnabled(status);
     }
 
-    public void rankUpdated(){
-        try {
-            SwingUtilities.invokeLater(() -> {
-                Map<String, Integer> mostFrequent = monitor.viewMostFrequentN(getNumOfWordsToBePrinted());
-                this.updateWordsCounter(mostFrequent.get("TOTAL_WORDS"));
-                mostFrequent.remove("TOTAL_WORDS");
-                this.getTextArea().setText("");
-                for (String s: mostFrequent.keySet()) {
-                    this.addTextToTextArea(this.getTextArea(), "Parola: " + s + " Occorenze: " + mostFrequent.get(s));
-                }
-            });
-        } catch (Exception ex){
-            ex.printStackTrace();
-        }
-    }
-
-
     public void updateGUI(LinkedHashMap<String, Integer> rank){
         try {
             SwingUtilities.invokeLater(() -> {
-                int n = 10;
                 this.updateWordsCounter(rank.get("TOTAL_WORDS"));
                 rank.remove("TOTAL_WORDS");
-                HashMap<String, Integer> shortRank = rank.entrySet().stream().limit(n)
-                .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll);
+              /*  HashMap<String, Integer> shortRank = rank.entrySet().stream().limit(n)
+                .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll);*/
                 this.getTextArea().setText("");
-                for (String s: shortRank.keySet()) {
-                    this.addTextToTextArea(this.getTextArea(), "Parola: " + s + " Occorenze: " + shortRank.get(s));
+                int i = 0;
+                for (String s: rank.keySet()) {
+                    if(i < getNumOfWordsToBePrinted()){
+                        this.addTextToTextArea(this.getTextArea(), "Parola: " + s + " Occorenze: " + rank.get(s));
+                        i++;
+                    }else {
+                        break;
+                    }
                 }
             });
         } catch (Exception ex){

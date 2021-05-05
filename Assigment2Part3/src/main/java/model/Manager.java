@@ -1,64 +1,66 @@
 package model;
 
+import view.View;
+
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+
 
 public class Manager {
 
+    private View view;
     private final List<Task> tasks = new LinkedList<>();
-    private final Lock mutex;
-    private boolean stop = false;
+    private List<String> unwantedWords;
+    private int madeTasks;
+    private boolean computation;
 
     public Manager() {
-        mutex = new ReentrantLock();
+        unwantedWords = new LinkedList<>();
+        computation = true;
     }
 
     public void add(Task e){
-        try{
-            mutex.lock();
-            tasks.add(e);
-        } finally {
-            mutex.unlock();
-        }
+        tasks.add(e);
     }
 
     public List<Task> getTasks(){
-        try{
-            mutex.lock();
-            return this.tasks;
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    public void stop(){
-        try{
-            mutex.lock();
-            this.stop = true;
-        } finally {
-            mutex.unlock();
-        }
-    }
-
-    public boolean isComputationStopped(){
-        try{
-            mutex.lock();
-            return !this.stop;
-        } finally {
-            mutex.unlock();
-        }
+        return this.tasks;
     }
 
     public void clear(){
-        try{
-            mutex.lock();
-            this.tasks.clear();
-            this.stop = false;
-        } finally {
-            mutex.unlock();
-        }
+        this.tasks.clear();
+        this.madeTasks = 0;
+        computation = true;
+    }
 
+    public View getView() {
+        return view;
+    }
+
+    public void setView(View view) {
+        this.view = view;
+    }
+
+    public void setUnwantedWords(List<String> unwantedWords) {
+        this.unwantedWords = unwantedWords;
+    }
+
+    public List<String> getUnwantedWords() {
+        return unwantedWords;
+    }
+
+    public void incMadeTasks(){
+        this.madeTasks++;
+        if (this.madeTasks == tasks.size()){
+            view.setStartButtonStatus(true);
+        }
+    }
+
+    public void stopComputation(){
+        this.computation = false;
+    }
+
+    public boolean getComputation() {
+        return computation;
     }
 }
