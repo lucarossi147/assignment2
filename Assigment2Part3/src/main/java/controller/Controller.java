@@ -163,6 +163,7 @@ public class Controller {
                 update(pageRank, word);
             }
         }
+
         return pageRank;
     }
 
@@ -184,11 +185,13 @@ public class Controller {
             }
             totalWords += instancesOfThisWord;
         }
+        LinkedHashMap<String,Integer> finalRank = sortRank(globalRank);
+        view.updateGUI(finalRank);
         return sortRank(globalRank);
     }
 
-    private Map<String, Integer> sortRank(Map<String, Integer> map){
-        Map<String, Integer> sortedMap = new LinkedHashMap<>();
+    private LinkedHashMap<String, Integer> sortRank(Map<String, Integer> map){
+        LinkedHashMap<String, Integer> sortedMap = new LinkedHashMap<>();
         map.entrySet()
                 .stream()
                 .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))

@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -139,12 +140,14 @@ public class View extends JFrame implements ActionListener {
     public void updateGUI(LinkedHashMap<String, Integer> rank){
         try {
             SwingUtilities.invokeLater(() -> {
-                Map<String, Integer> mostFrequent = monitor.viewMostFrequentN(getNumOfWordsToBePrinted());
-                this.updateWordsCounter(mostFrequent.get("TOTAL_WORDS"));
-                mostFrequent.remove("TOTAL_WORDS");
+                int n = 10;
+                this.updateWordsCounter(rank.get("TOTAL_WORDS"));
+                rank.remove("TOTAL_WORDS");
+                HashMap<String, Integer> shortRank = rank.entrySet().stream().limit(n)
+                .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), Map::putAll);
                 this.getTextArea().setText("");
-                for (String s: mostFrequent.keySet()) {
-                    this.addTextToTextArea(this.getTextArea(), "Parola: " + s + " Occorenze: " + mostFrequent.get(s));
+                for (String s: shortRank.keySet()) {
+                    this.addTextToTextArea(this.getTextArea(), "Parola: " + s + " Occorenze: " + shortRank.get(s));
                 }
             });
         } catch (Exception ex){
